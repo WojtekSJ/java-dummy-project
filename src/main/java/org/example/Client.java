@@ -11,13 +11,6 @@ public class Client {
         if (name == null || name.isBlank()) {
             throw new IllegalArgumentException("'name' must not be null or empty");
         }
-
-        boolean even = service.isEven(name.length());
-        String greeting = "Hello, %s".formatted(name);
-        if (even) {
-            return greeting.toUpperCase();
-        } else {
-            return greeting;
-        }
+        return service.isEven(name.length()) ? String.format("Hello, %s", name).toUpperCase() : String.format("Hello, %s", name);
     }
 }
