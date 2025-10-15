@@ -1,0 +1,35 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: besu
+  namespace: besu
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: besu
+  template:
+    metadata:
+      labels:
+        app: besu
+    spec:
+      containers:
+        - name: besu
+          image: hyperledger/besu:latest
+          args:
+            - "--network=mainnet"
+            - "--rpc-http-enabled=true"
+            - "--rpc-http-port=8545"
+            - "--rpc-http-host=0.0.0.0"
+            - "--rpc-http-api=ETH,WEB3,NET"
+            - "--host-whitelist=*"
+            - "--data-path=/data"
+          ports:
+            - containerPort: 8545
+            - containerPort: 30303
+          volumeMounts:
+            - name: besu-data
+              mountPath: /data
+      volumes:
+        - name: besu-data
+          emptyDir: {}
