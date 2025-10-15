@@ -1,0 +1,102 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: besu-validator
+  namespace: besu
+spec:
+  replicas: 4
+  serviceName: besu-p2p
+  selector:
+    matchLabels:
+      app: besu-validator
+  template:
+    metadata:
+      labels:
+        app: besu-validator
+    spec:
+      containers:
+        - name: besu
+          image: hyperledger/besu:latest  # Consider pinning to a version like "hyperledger/besu:24.9.0"
+          imagePullPolicy: Always
+          args:
+            - --genesis-file=/config/genesis.json
+            - --static-nodes-file=/config/static-nodes.json
+            - --data-path=/data
+            - --node-private-key-file=/keys/key
+            - --p2p-host=$(POD_IP)
+            - --p2p-port=30303
+            - --rpc-http-enabled=true
+            - --rpc-http-host=0.0.0.0
+            - --rpc-http-port=8545
+            - --rpc-http-api=ETH,NET,WEB3,QBFT,ADMIN
+            - --host-allowlist=*
+            - --metrics-enabled=true
+            - --metrics-host=0.0.0.0
+            - --metrics-port=9545
+          env:
+            - name: POD_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
+          ports:
+            - name: rpc
+              containerPort: 8545
+              protocol: TCP
+            - name: p2p
+              containerPort: 30303
+              protocol: TCP
+          volumeMounts:
+            - name: config
+              mountPath: /config
+              readOnly: true
+            - name: keys
+              mountPath: /keys
+            - name: data
+              mountPath: /data
+      initContainers:
+        - name: copy-keys
+          image: busybox
+          imagePullPolicy: Always
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              ORD=$(hostname | awk -F- '{print $NF}')
+              cp /keys-$ORD/key /keys/key
+          volumeMounts:
+            - name: keys-0
+              mountPath: /keys-0
+            - name: keys-1
+              mountPath: /keys-1
+            - name: keys-2
+              mountPath: /keys-2
+            - name: keys-3
+              mountPath: /keys-3
+            - name: keys
+              mountPath: /keys
+      volumes:
+        - name: config
+          configMap:
+            name: besu-config1
+        - name: keys-0
+          secret:
+            secretName: besu-val-0-key
+        - name: keys-1
+          secret:
+            secretName: besu-val-1-key
+        - name: keys-2
+          secret:
+            secretName: besu-val-2-key
+        - name: keys-3
+          secret:
+            secretName: besu-val-3-key
+        - name: keys
+          emptyDir: {}
+        - name: data
+          emptyDir: {}
+  updateStrategy:
+    type: RollingUpdate
+  podManagementPolicy: OrderedReady
+  revisionHistoryLimit: 10
+  persistentVolumeClaimRetentionPolicy:
+    whenDeleted: Retain
+    whenScaled: Retain
