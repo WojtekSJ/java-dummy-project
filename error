@@ -1,2 +1,145 @@
 wojciech_szala [ ~ ]$ kubectl apply -f besu-deployment.yaml
 error: error validating "besu-deployment.yaml": error validating data: failed to download openapi: the server has asked for the client to provide credentials; if you choose to ignore these errors, turn validation off with --validate=false
+
+kubectl -n besu logs besu-validator-0 --tail=120 Defaulted container "besu" out of: besu, copy-keys (init) Defaulted container "besu" out of: besu, copy-keys (init) 2025-10-15 08:41:24.613+0000 | main | INFO  | Besu | Starting Besu 2025-10-15 08:41:24.826+0000 | main | ERROR | Besu | Failed to start Besu: Invalid value for option '--rpc-http-api': invalid entries found [--host-whitelist=*] Invalid value for option '--rpc-http-api': invalid entries found [--host-whitelist=*] To display full help: besu [COMMAND] --help
+
+
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  annotations:
+    kubectl.kubernetes.io/last-applied-configuration: |
+      {"apiVersion":"apps/v1","kind":"StatefulSet","metadata":{"annotations":{},"name":"besu-validator","namespace":"besu"},"spec":{"replicas":4,"selector":{"matchLabels":{"app":"besu-validator"}},"serviceName":"besu-p2p","template":{"metadata":{"labels":{"app":"besu-validator"}},"spec":{"containers":[{"args":["--genesis-file=/config/genesis.json","--static-nodes-file=/config/static-nodes.json","--data-path=/data","--node-private-key-file=/keys/key","--p2p-host=$(POD_IP)","--p2p-port=30303","--rpc-http-enabled=true","--rpc-http-host=0.0.0.0","--rpc-http-port=8545","--rpc-http-api=ETH,NET,WEB3,QBFT,ADMIN","--host-whitelist=*"],"env":[{"name":"POD_IP","valueFrom":{"fieldRef":{"fieldPath":"status.podIP"}}}],"image":"hyperledger/besu:latest","name":"besu","ports":[{"containerPort":8545,"name":"rpc"},{"containerPort":30303,"name":"p2p"}],"volumeMounts":[{"mountPath":"/config","name":"config","readOnly":true},{"mountPath":"/keys","name":"keys"},{"mountPath":"/data","name":"data"}]}],"initContainers":[{"args":["ORD=$(hostname | awk -F- '{print $NF}')\ncp /keys-$ORD/key /keys/key\n"],"command":["/bin/sh","-c"],"image":"busybox","name":"copy-keys","volumeMounts":[{"mountPath":"/keys-0","name":"keys-0"},{"mountPath":"/keys-1","name":"keys-1"},{"mountPath":"/keys-2","name":"keys-2"},{"mountPath":"/keys-3","name":"keys-3"},{"mountPath":"/keys","name":"keys"}]}],"volumes":[{"configMap":{"name":"besu-config1"},"name":"config"},{"name":"keys-0","secret":{"secretName":"besu-val-0-key"}},{"name":"keys-1","secret":{"secretName":"besu-val-1-key"}},{"name":"keys-2","secret":{"secretName":"besu-val-2-key"}},{"name":"keys-3","secret":{"secretName":"besu-val-3-key"}},{"emptyDir":{},"name":"keys"},{"emptyDir":{},"name":"data"}]}}}}
+  creationTimestamp: "2025-10-15T07:58:43Z"
+  generation: 3
+  name: besu-validator
+  namespace: besu
+  resourceVersion: "1973880"
+  uid: 4a946c77-274b-40b2-a7a2-292cbaaada50
+spec:
+  persistentVolumeClaimRetentionPolicy:
+    whenDeleted: Retain
+    whenScaled: Retain
+  podManagementPolicy: OrderedReady
+  replicas: 4
+  revisionHistoryLimit: 10
+  selector:
+    matchLabels:
+      app: besu-validator
+  serviceName: besu-p2p
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        app: besu-validator
+    spec:
+      containers:
+      - args:
+        - --genesis-file=/config/genesis.json
+        - --static-nodes-file=/config/static-nodes.json
+        - --data-path=/data
+        - --node-private-key-file=/keys/key
+        - --p2p-host=$(POD_IP)
+        - --p2p-port=30303
+        - --rpc-http-enabled=true
+        - --rpc-http-host=0.0.0.0
+        - --rpc-http-port=8545
+        - --rpc-http-api=ETH,NET,WEB3,QBFT,ADMIN
+        - --host-allowlist=*
+        - --metrics-enabled=true
+        - --metrics-host=0.0.0.0
+        - --metrics-port=9545
+        env:
+        - name: POD_IP
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: status.podIP
+        image: hyperledger/besu:latest
+        imagePullPolicy: Always
+        name: besu
+        ports:
+        - containerPort: 8545
+          name: rpc
+          protocol: TCP
+        - containerPort: 30303
+          name: p2p
+          protocol: TCP
+        resources: {}
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
+        volumeMounts:
+        - mountPath: /config
+          name: config
+          readOnly: true
+        - mountPath: /keys
+          name: keys
+        - mountPath: /data
+          name: data
+      dnsPolicy: ClusterFirst
+      initContainers:
+      - args:
+        - |
+          ORD=$(hostname | awk -F- '{print $NF}')
+          cp /keys-$ORD/key /keys/key
+        command:
+        - /bin/sh
+        - -c
+        image: busybox
+        imagePullPolicy: Always
+        name: copy-keys
+        resources: {}
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
+        volumeMounts:
+        - mountPath: /keys-0
+          name: keys-0
+        - mountPath: /keys-1
+          name: keys-1
+        - mountPath: /keys-2
+          name: keys-2
+        - mountPath: /keys-3
+          name: keys-3
+        - mountPath: /keys
+          name: keys
+      restartPolicy: Always
+      schedulerName: default-scheduler
+      securityContext: {}
+      terminationGracePeriodSeconds: 30
+      volumes:
+      - configMap:
+          defaultMode: 420
+          name: besu-config1
+        name: config
+      - name: keys-0
+        secret:
+          defaultMode: 420
+          secretName: besu-val-0-key
+      - name: keys-1
+        secret:
+          defaultMode: 420
+          secretName: besu-val-1-key
+      - name: keys-2
+        secret:
+          defaultMode: 420
+          secretName: besu-val-2-key
+      - name: keys-3
+        secret:
+          defaultMode: 420
+          secretName: besu-val-3-key
+      - emptyDir: {}
+        name: keys
+      - emptyDir: {}
+        name: data
+  updateStrategy:
+    rollingUpdate:
+      partition: 0
+    type: RollingUpdate
+status:
+  availableReplicas: 0
+  collisionCount: 0
+  currentReplicas: 3
+  currentRevision: besu-validator-57b87cbfd9
+  observedGeneration: 3
+  replicas: 3
+  updateRevision: besu-validator-6dcbb8bcf7
