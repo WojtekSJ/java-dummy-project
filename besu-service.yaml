@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: besu-rpc
+  namespace: besu
+spec:
+  type: LoadBalancer
+  selector:
+    app: besu
+  ports:
+    - name: rpc
+      port: 8545
+      targetPort: 8545
+    - name: discovery
+      port: 30303
+      targetPort: 30303
