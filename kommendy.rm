@@ -1,1 +1,3 @@
 kubectl apply -f besu-deployment.yaml
+
+az aks get-credentials --resource-group cap-rg-protocoin4-we --name protocoin-aks-public
